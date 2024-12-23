@@ -4,27 +4,42 @@ import { Ionicons } from '@expo/vector-icons';
 import styles from '../components/styles/registerStyle';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSQLiteContext } from 'expo-sqlite';
+import { TB_USERS_NAME } from '@/Database/AppDatabase';
 
 export default function RegisterScreen() {
+
+  const db = useSQLiteContext();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [errors = { name }, setErrors] = useState({});
 
-  const validateEmail = (email) => {
+  const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
   const handleRegister = async () => {
-    const user = { name, email, password, logado: true };
+    // const user = { name, email, password, logado: true };
     try {
-      const storedUsers = JSON.parse(await AsyncStorage.getItem('users')) || [];
-      storedUsers.push(user);
-      await AsyncStorage.setItem('users', JSON.stringify(storedUsers));
+
+
+      await db.runAsync(`INSERT INTO ${TB_USERS_NAME} (name, 
+                                                email, 
+                                                password, 
+                                                logado, 
+                                                created_at, 
+                                                updated_at)
+                                        VALUES (?, ?, ?, ?, ?, ?)`, name, email, password, 1, Date(), Date())
+
+      // const storedUsers = JSON.parse(await AsyncStorage.getItem('users')) || [];
+      // storedUsers.push(user);
+      // await AsyncStorage.setItem('users', JSON.stringify(storedUsers));
       console.log('Usuário salvo com sucesso no AsyncStorage');
       router.push('/home');
     } catch (error) {
@@ -34,7 +49,7 @@ export default function RegisterScreen() {
 
 
   const validateFields = () => {
-    const newErrors = {};
+    const newErrors = { name, email, password, confirmPassword };
 
     if (!name.trim()) newErrors.name = 'Nome é obrigatório';
     if (!validateEmail(email)) newErrors.email = 'Email inválido';

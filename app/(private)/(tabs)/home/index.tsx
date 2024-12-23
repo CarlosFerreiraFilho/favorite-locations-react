@@ -5,13 +5,20 @@ import { router } from 'expo-router';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSQLiteContext } from 'expo-sqlite';
+import { CURRENT_USER, TB_LOCATIONS_NAME } from '@/Database/AppDatabase';
+import LocationBodyModel from '@/models/Locations/LocationBodyModel';
 
 export default function HomeScreen() {
+
+    const db = useSQLiteContext();
     const [locations, setLocations] = useState([]);
 
     const getLocations = async () => {
-        const locationsData = await AsyncStorage.getItem('locations');
-        return locationsData ? JSON.parse(locationsData) : [];
+
+        const locationsData = await db.getAllAsync(`SELECT * FROM ${TB_LOCATIONS_NAME} WHERE user_id = ?`, CURRENT_USER.user_id);
+        // const locationsData = await AsyncStorage.getItem('locations');
+        return locationsData;
     };
 
     useFocusEffect(
@@ -27,7 +34,7 @@ export default function HomeScreen() {
         }, [])
     );
 
-    const handleEditLocation = (location) => {
+    const handleEditLocation = (location: LocationBodyModel) => {
         router.push(`/(private)/location/${location.id}`);
         // router.push({
         //     pathname: '/(private)/location',
@@ -37,12 +44,25 @@ export default function HomeScreen() {
     };
 
     const handleDeleteLocation = async (id) => {
-        const updatedLocations = locations.filter(location => location.id !== id);
-        setLocations(updatedLocations);
 
-        await AsyncStorage.setItem('locations', JSON.stringify(updatedLocations));
+        try {
+            await db.runAsync(`delete from ${TB_LOCATIONS_NAME} where id = ?`, id)
 
-        Alert.alert('Sucesso', 'Localização removida com sucesso!');
+            const savedLocations = await getLocations();
+            setLocations(savedLocations);
+            Alert.alert('Sucesso', 'Localização removida com sucesso!');
+        } catch (error) {
+
+            console.error('Não foi possível remover localização! ', error)
+            Alert.alert('Erro', 'Não foi possível remover localização!');
+        }
+
+        // const updatedLocations = locations.filter(location => location.id !== id);
+        // setLocations(updatedLocations);
+
+        // await AsyncStorage.setItem('locations', JSON.stringify(updatedLocations));
+
+        // Alert.alert('Sucesso', 'Localização removida com sucesso!');
     };
 
     const renderLocationItem = ({ item }) => {
@@ -62,8 +82,8 @@ export default function HomeScreen() {
 
                 <View style={styles.infoContainer}>
                     <Text style={styles.locationName}>{item.name}</Text>
-                    <Text>Latitude: {item.latitude}</Text>
-                    <Text>Longitude: {item.longitude}</Text>
+                    <Text style={styles.locationInfo}>Latitude: {item.latitude}</Text>
+                    <Text style={styles.locationInfo}>Longitude: {item.longitude}</Text>
                 </View>
 
                 <TouchableOpacity

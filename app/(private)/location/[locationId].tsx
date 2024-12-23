@@ -5,8 +5,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
+import { useSQLiteContext } from 'expo-sqlite';
+import { CURRENT_USER, TB_LOCATIONS_NAME } from '@/Database/AppDatabase';
+import LocationBodyModel from '@/models/Locations/LocationBodyModel';
 
 export default function LocationScreen() {
+  const db = useSQLiteContext();
   const navigation = useNavigation();
   const { locationId } = useLocalSearchParams();
 
@@ -21,10 +25,13 @@ export default function LocationScreen() {
   useEffect(() => {
     if (locationId && locationId !== "undefined") {
       const fetchLocationData = async () => {
-        const locations = await AsyncStorage.getItem('locations');
-        const parsedLocations = locations ? JSON.parse(locations) : [];
+        // const locations = await AsyncStorage.getItem('locations');
+        // const parsedLocations = locations ? JSON.parse(locations) : [];
 
-        const location = parsedLocations.find(loc => loc.id === locationId);
+        // const location = parsedLocations.find(loc => loc.id === locationId);
+
+        const location = await db.getFirstAsync<LocationBodyModel>(`SELECT * FROM ${TB_LOCATIONS_NAME} WHERE id = ?`, locationId);
+
 
         if (location) {
           setName(location.name);
@@ -44,10 +51,30 @@ export default function LocationScreen() {
     return parsedLocations;
   };
 
-  const saveLocations = async (locations) => {
+  const saveLocations = async () => {
     try {
-      console.log("locarions:" + locations)
-      await AsyncStorage.setItem('locations', JSON.stringify(locations));
+
+      if (locationId && locationId !== "undefined") {
+        await db.runAsync(`UPDATE ${TB_LOCATIONS_NAME} SET name = ?,
+                                                        latitude = ?,
+                                                        longitude = ?,
+                                                        markerColor = ?,
+                                                        updated_at = ?
+                                          where id = ?`, name, latitude, longitude, markerColor, Date(), locationId)
+      } else {
+
+        await db.runAsync(`INSERT INTO ${TB_LOCATIONS_NAME} (name,
+                                      latitude,
+                                      longitude,
+                                      markerColor,
+                                      user_id,
+                                      created_at,
+                                      updated_at)
+                              VALUES (?, ?, ?, ?, ?, ?,?)`, name, latitude, longitude, markerColor, CURRENT_USER.user_id, Date(), Date())
+
+      }
+      // console.log("locations:" + locations)
+      // await AsyncStorage.setItem('locations', JSON.stringify(locations));
     } catch (error) {
       console.error('Erro ao salvar localizações no AsyncStorage:', error);
     }
@@ -55,20 +82,23 @@ export default function LocationScreen() {
 
   const handleSave = async () => {
     if (validateFields()) {
-      const newLocation = { name, latitude, longitude, markerColor };
+      // const newLocation = { name, latitude, longitude, markerColor };
 
-      const locations = await getLocations();
+      // const locations = await getLocations();
 
-      if (locationId && locationId !== "undefined") {
-        const updatedLocations = locations.map(location =>
-          location.id === locationId ? { ...newLocation, id: locationId } : location
-        );
-        await saveLocations(updatedLocations);
-      } else {
-        newLocation.id = new Date().getTime().toString();
-        locations.push(newLocation);
-        await saveLocations(locations);
-      }
+      // if (locationId && locationId !== "undefined") {
+      //   const updatedLocations = locations.map(location =>
+      //     location.id === locationId ? { ...newLocation, id: locationId } : location
+      //   );
+      //   await saveLocations(updatedLocations);
+      // } else {
+      //   console.log(CURRENT_USER.user_id)
+
+      // newLocation.id = new Date().getTime().toString();
+      // locations.push(newLocation);
+      // await saveLocations(locations);
+      await saveLocations();
+      // }
 
       Alert.alert('Sucesso', 'Localização salva com sucesso!');
       navigation.goBack();
@@ -76,9 +106,13 @@ export default function LocationScreen() {
   };
 
   const handleRemove = async () => {
-    const locations = await getLocations();
-    const updatedLocations = locations.filter(location => location.id !== locationId);
-    await saveLocations(updatedLocations);
+    // const locations = await getLocations();
+    // const updatedLocations = locations.filter(location => location.id !== locationId);
+    // await saveLocations(updatedLocations);
+    // 
+    await db.runAsync(`delete from ${TB_LOCATIONS_NAME} where id = ?`, locationId)
+
+    Alert.alert('Sucesso', 'Localização removida com sucesso!');
 
     navigation.goBack();
   };

@@ -1,9 +1,10 @@
+import { ColorsConstants } from '@/styles/Global.style';
 import { StyleSheet } from 'react-native';
 
 export default StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#ffffff',
+        backgroundColor: ColorsConstants.backgroundColor,
         paddingTop: 20,
         paddingHorizontal: 20,
     },
@@ -36,7 +37,7 @@ export default StyleSheet.create({
     saveButton: {
         width: '100%',
         padding: 15,
-        backgroundColor: '#00d6c5',
+        backgroundColor: ColorsConstants.greenTheme,
         borderRadius: 10,
         alignItems: 'center',
         marginTop: 20,

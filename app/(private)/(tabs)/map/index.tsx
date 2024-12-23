@@ -5,17 +5,23 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { CURRENT_USER, TB_LOCATIONS_NAME } from '@/Database/AppDatabase';
+import { useSQLiteContext } from 'expo-sqlite';
+import LocationBodyModel from '@/models/Locations/LocationBodyModel';
 
 export default function MapScreen() {
+    const db = useSQLiteContext();
     const [region, setRegion] = useState(null);
     const [savedLocations, setSavedLocations] = useState([]);
 
     useFocusEffect(
         React.useCallback(() => {
             const loadLocations = async () => {
-                const locationsData = await AsyncStorage.getItem('locations');
-                const locations = locationsData ? JSON.parse(locationsData) : [];
-                console.log(locations);
+                // const locationsData = await AsyncStorage.getItem('locations');
+                // const locations = locationsData ? JSON.parse(locationsData) : [];
+
+                const locations = await db.getAllAsync(`SELECT * FROM ${TB_LOCATIONS_NAME} WHERE user_id = ?`, CURRENT_USER.user_id);
+
                 setSavedLocations(locations);
 
                 if (locations.length > 0) {
@@ -78,7 +84,7 @@ export default function MapScreen() {
 
 
 
-    const handleEditLocation = (location) => {
+    const handleEditLocation = (location: LocationBodyModel) => {
         router.push(`/(private)/location/${location.id}`);
     };
 
@@ -102,7 +108,7 @@ export default function MapScreen() {
             >
                 <Marker coordinate={region} title="Minha localização" />
 
-                {savedLocations.map((location) => (
+                {savedLocations.map((location: LocationBodyModel) => (
                     <Marker
                         key={location.id}
                         coordinate={{

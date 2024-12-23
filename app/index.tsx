@@ -5,8 +5,12 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../components/styles/loginStyle';
 import { router } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
+import { CURRENT_USER, SELECT_USER_LOGGED, TB_USERS_NAME } from '@/Database/AppDatabase';
+import UserBodyModel from '@/models//Users/UserBodyModel';
 
 export default function LoginScreen() {
+  const db = useSQLiteContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -16,15 +20,20 @@ export default function LoginScreen() {
   console.log(navigation)
 
   useEffect(() => {
+
     const checkUserLoggedIn = async () => {
       setLoading(true);
       try {
-        const users = JSON.parse(await AsyncStorage.getItem('users')) || [];
-        console.log('Usuários armazenados:', users);
 
-        const loggedInUser = users.find(user => user.logado);
+        const loggedInUser = await db.getFirstAsync<UserBodyModel>(SELECT_USER_LOGGED);
+
+        // const users = JSON.parse(await AsyncStorage.getItem('users')) || [];
+        // console.log('Usuários armazenados:', users);
+
+        // const loggedInUser = users.find(user => user.logado);
 
         if (loggedInUser) {
+          CURRENT_USER.user_id = loggedInUser.id;
           router.push('/(private)/(tabs)/home');
         }
       } catch (error) {
@@ -39,15 +48,20 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setLoading(true);
     try {
-      const users = JSON.parse(await AsyncStorage.getItem('users')) || [];
+      //   const users = JSON.parse(await AsyncStorage.getItem('users')) || [];
 
-      const user = users.find(user => user.email === email && user.password === password);
+      //   const user = users.find(user => user.email === email && user.password === password);
+
+      const user = await db.getFirstAsync<UserBodyModel>(`SELECT * FROM ${TB_USERS_NAME} WHERE email = ? and password = ?`, email, password);
 
       if (user) {
-        const updatedUsers = users.map(u =>
-          u.email === user.email ? { ...u, logado: true } : { ...u, logado: false }
-        );
-        await AsyncStorage.setItem('users', JSON.stringify(updatedUsers));
+        // const updatedUsers = users.map(u =>
+        //   u.email === user.email ? { ...u, logado: true } : { ...u, logado: false }
+        // );
+        // await AsyncStorage.setItem('users', JSON.stringify(updatedUsers));
+
+        CURRENT_USER.user_id = user.id;
+        await db.runAsync(`UPDATE ${TB_USERS_NAME} SET logado = 1, updated_at = ? where id = ?`, Date(), user.id);
 
         console.log('Login bem-sucedido');
         router.push('/(private)/(tabs)/home');

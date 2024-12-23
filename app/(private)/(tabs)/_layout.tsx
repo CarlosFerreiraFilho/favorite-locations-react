@@ -3,19 +3,31 @@ import { TouchableOpacity, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { ColorsConstants } from '@/styles/Global.style';
+import { useSQLiteContext } from 'expo-sqlite';
+import UserBodyModel from '@/models/Users/UserBodyModel';
+import { SELECT_USER_LOGGED, TB_USERS_NAME } from '@/Database/AppDatabase';
 
 export default function Layout() {
     const router = useRouter();
+    const db = useSQLiteContext();
 
     const handleLogout = async () => {
         try {
-            await AsyncStorage.removeItem('user');
 
-            const users = JSON.parse(await AsyncStorage.getItem('users')) || [];
-            const updatedUsers = users.map(user => ({ ...user, logado: false }));
+            const loggedInUser = await db.getFirstAsync<UserBodyModel>(SELECT_USER_LOGGED);
 
-            await AsyncStorage.setItem('users', JSON.stringify(updatedUsers));
-            await AsyncStorage.setItem('logado', 'false');
+            if (loggedInUser) {
+                await db.runAsync(`UPDATE ${TB_USERS_NAME} SET logado = 0, updated_at = ? where id = ?`, Date(), loggedInUser.id);
+            }
+
+            // await AsyncStorage.removeItem('user');
+
+            // const users = JSON.parse(await AsyncStorage.getItem('users')) || [];
+            // const updatedUsers = users.map(user => ({ ...user, logado: false }));
+
+            // await AsyncStorage.setItem('users', JSON.stringify(updatedUsers));
+            // await AsyncStorage.setItem('logado', 'false');
 
             router.replace('/');
 
@@ -29,7 +41,7 @@ export default function Layout() {
     return (
         <Tabs
             screenOptions={{
-                tabBarActiveTintColor: '#00d6c5',
+                tabBarActiveTintColor: ColorsConstants.greenTheme,
                 tabBarInactiveTintColor: '#a9a9a9',
             }}
         >
@@ -37,7 +49,7 @@ export default function Layout() {
                 name="home/index"
                 options={{
                     headerStyle: {
-                        backgroundColor: '#00d6c5',
+                        backgroundColor: ColorsConstants.greenTheme,
                     },
                     headerTintColor: '#fff',
                     headerTitleStyle: {
@@ -58,7 +70,7 @@ export default function Layout() {
                 name="map/index"
                 options={{
                     headerStyle: {
-                        backgroundColor: '#00d6c5',
+                        backgroundColor: ColorsConstants.greenTheme,
                     },
                     headerTintColor: '#fff',
                     headerTitleStyle: {

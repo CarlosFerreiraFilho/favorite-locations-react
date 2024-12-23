@@ -1,3 +1,4 @@
+import { ColorsConstants } from '@/styles/Global.style';
 import { Stack } from 'expo-router';
 
 export default function Layout() {
@@ -5,7 +6,7 @@ export default function Layout() {
         <Stack
             screenOptions={{
                 headerStyle: {
-                    backgroundColor: '#00d6c5',
+                    backgroundColor: ColorsConstants.greenTheme,
                 },
                 headerTintColor: '#fff',
                 headerTitleStyle: {
