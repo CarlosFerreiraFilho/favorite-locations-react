@@ -6,11 +6,11 @@ export const TB_LOCATIONS_NAME = 'locations';
 export const CURRENT_USER = {
     user_id: 0
 };
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 const CREATE_TB_USERS = `
     CREATE TABLE ${TB_USERS_NAME} (
-        id INTEGER PRIMARY KEY NOT NULL,
+        uid TEXT NOT NULL,
         name TEXT NOT NULL,
         email TEXT NOT NULL,
         password TEXT NOT NULL,
@@ -22,12 +22,12 @@ const CREATE_TB_USERS = `
 
 const CREATE_TB_LOCATIONS = `
     CREATE TABLE ${TB_LOCATIONS_NAME} (
-        id INTEGER PRIMARY KEY NOT NULL,
+        uid TEXT NOT NULL,
         name TEXT NOT NULL,
         latitude TEXT NOT NULL,
         longitude TEXT NOT NULL,
         markerColor TEXT NOT NULL,
-        user_id INTEGER NOT NULL,
+        user_uid TEXT NOT NULL,
         created_at DATE NULL,
         updated_at DATE NULL
     )

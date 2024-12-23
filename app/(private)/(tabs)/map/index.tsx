@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, Dimensions, Alert } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { CURRENT_USER, TB_LOCATIONS_NAME } from '@/Database/AppDatabase';
+import { TB_LOCATIONS_NAME } from '@/Database/AppDatabase';
 import { useSQLiteContext } from 'expo-sqlite';
 import LocationBodyModel from '@/models/Locations/LocationBodyModel';
+import { UserContext } from '@/store/UserStore';
+import env from '@/constants/env';
 
 export default function MapScreen() {
     const db = useSQLiteContext();
+    const userAuth = useContext(UserContext);
     const [region, setRegion] = useState(null);
     const [savedLocations, setSavedLocations] = useState([]);
 
@@ -20,12 +23,24 @@ export default function MapScreen() {
                 // const locationsData = await AsyncStorage.getItem('locations');
                 // const locations = locationsData ? JSON.parse(locationsData) : [];
 
-                const locations = await db.getAllAsync(`SELECT * FROM ${TB_LOCATIONS_NAME} WHERE user_id = ?`, CURRENT_USER.user_id);
+                // const locations = await db.getAllAsync(`SELECT * FROM ${TB_LOCATIONS_NAME} WHERE user_id = ?`, userAuth?.id ?? 0);
 
-                setSavedLocations(locations);
+                const response = await fetch(`${env.DB_URL}/locations.json`);
+                const locationsObj = await response.json();
+                const locationsArr: Array<LocationBodyModel> = Object.values(locationsObj)
+                const locationsIdArr: Array<string> = Object.keys(locationsObj)
+                const locationsData = locationsArr.map((location_, index) => {
+                    return {
+                        ...location_,
+                        id: locationsIdArr[index]
+                    }
+                })
 
-                if (locations.length > 0) {
-                    const lastLocation = locations[locations.length - 1];
+
+                setSavedLocations(locationsData);
+
+                if (locationsData.length > 0) {
+                    const lastLocation = locationsData[locationsData.length - 1];
                     setRegion({
                         latitude: parseFloat(lastLocation.latitude),
                         longitude: parseFloat(lastLocation.longitude),

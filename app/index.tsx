@@ -1,18 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useContext } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../components/styles/loginStyle';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { CURRENT_USER, SELECT_USER_LOGGED, TB_USERS_NAME } from '@/Database/AppDatabase';
+import { SELECT_USER_LOGGED, TB_USERS_NAME } from '@/Database/AppDatabase';
 import UserBodyModel from '@/models//Users/UserBodyModel';
+import { UserActionType, UserContext, UserDispatchContext } from '@/store/UserStore';
+import env from '@/constants/env';
 
 export default function LoginScreen() {
+  const userAuth = useContext(UserContext);
+  const userAuthDispatch = useContext(UserDispatchContext);
   const db = useSQLiteContext();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+
+  const [email, setEmail] = useState(userAuth?.email ?? '');
+  const [password, setPassword] = useState(userAuth?.password ?? '');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation();
@@ -25,6 +29,8 @@ export default function LoginScreen() {
       setLoading(true);
       try {
 
+        console.log(userAuth)
+
         const loggedInUser = await db.getFirstAsync<UserBodyModel>(SELECT_USER_LOGGED);
 
         // const users = JSON.parse(await AsyncStorage.getItem('users')) || [];
@@ -33,7 +39,15 @@ export default function LoginScreen() {
         // const loggedInUser = users.find(user => user.logado);
 
         if (loggedInUser) {
-          CURRENT_USER.user_id = loggedInUser.id;
+          userAuthDispatch({
+            type: UserActionType.LOGAR,
+            user: {
+              id: loggedInUser.id,
+              email: loggedInUser.email,
+              password: loggedInUser.password,
+              token: `${Date().toString}${loggedInUser.id}`
+            }
+          })
           router.push('/(private)/(tabs)/home');
         }
       } catch (error) {
@@ -48,26 +62,91 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setLoading(true);
     try {
-      //   const users = JSON.parse(await AsyncStorage.getItem('users')) || [];
 
-      //   const user = users.find(user => user.email === email && user.password === password);
+      const apiKey = env.API_KEY;
+      const apiUrl = env.API_URL;
 
-      const user = await db.getFirstAsync<UserBodyModel>(`SELECT * FROM ${TB_USERS_NAME} WHERE email = ? and password = ?`, email, password);
+      const response = await fetch(`${apiUrl}/v1/accounts:signInWithPassword?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email,
+          password: password,
+          returnSecureToken: true
+        })
+      });
+      const { status, statusText } = response;
+      if (status == 200) {
+        const body = await response.json();
 
-      if (user) {
-        // const updatedUsers = users.map(u =>
-        //   u.email === user.email ? { ...u, logado: true } : { ...u, logado: false }
-        // );
-        // await AsyncStorage.setItem('users', JSON.stringify(updatedUsers));
-
-        CURRENT_USER.user_id = user.id;
-        await db.runAsync(`UPDATE ${TB_USERS_NAME} SET logado = 1, updated_at = ? where id = ?`, Date(), user.id);
-
-        console.log('Login bem-sucedido');
+        userAuthDispatch({
+          type: UserActionType.LOGAR,
+          user: {
+            id: body.localId,
+            email: email,
+            password: password,
+            token: body.idToken
+          }
+        })
         router.push('/(private)/(tabs)/home');
       } else {
-        console.error('Email ou senha incorretos');
+        Alert.alert('Email ou senha incorretos.');
       }
+
+      /*
+            // promiseResponse.then((response: Response) => {
+      
+            //   console.log(response)
+            //   if (body) {
+            //     body?.json()
+            //       .then((resp) => {
+      
+            //         Alert.alert(`Resposta de sucesso! Code: ${status} and: ${statusText}`);
+            //       }).catch((error) => {
+      
+            //         Alert.alert(error.message);
+            //       });
+            //   } else {
+            //     Alert.alert(`Body empty`);
+      
+            //   }
+      
+            // });
+            // promiseResponse.catch((error) => {
+            //   Alert.alert(error.message);
+            // })
+      
+            //   const users = JSON.parse(await AsyncStorage.getItem('users')) || [];
+      
+            //   const user = users.find(user => user.email === email && user.password === password);
+      
+            // const user = await db.getFirstAsync<UserBodyModel>(`SELECT * FROM ${TB_USERS_NAME} WHERE email = ? and password = ?`, email, password);
+      
+            // if (user) {
+            //   // const updatedUsers = users.map(u =>
+            //   //   u.email === user.email ? { ...u, logado: true } : { ...u, logado: false }
+            //   // );
+            //   // await AsyncStorage.setItem('users', JSON.stringify(updatedUsers));
+      
+            //   userAuthDispatch({
+            //     type: UserActionType.LOGAR,
+            //     user: {
+            //       id: user.id,
+            //       email: user.email,
+            //       password: user.password,
+            //       token: `${Date().toString}${user.id}`
+            //     }
+            //   })
+      
+            //   await db.runAsync(`UPDATE ${TB_USERS_NAME} SET logado = 1, updated_at = ? where id = ?`, Date(), user.id);
+      
+            //   console.log('Login bem-sucedido');
+            //   router.push('/(private)/(tabs)/home');
+            // } else {
+            //   console.error('Email ou senha incorretos');
+            // }
+            */
+
     } catch (error) {
       console.error('Erro ao realizar login:', error);
     } finally {
@@ -122,7 +201,7 @@ export default function LoginScreen() {
         <Text style={styles.forgotPassword}>Esqueceu sua senha?</Text>
       </TouchableOpacity>
 
-      {loading && <ActivityIndicator size="large" color="#0000ff" />}
+      {loading && <ActivityIndicator size="large" color="#00d6c5" />}
 
       <View style={styles.registerContainer}>
         <Text style={styles.registerText}>Novo por aqui?</Text>

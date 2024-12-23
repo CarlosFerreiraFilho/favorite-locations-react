@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import React, { useContext, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../components/styles/registerStyle';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSQLiteContext } from 'expo-sqlite';
 import { TB_USERS_NAME } from '@/Database/AppDatabase';
+import env from '@/constants/env';
+import { UserActionType, UserDispatchContext } from '@/store/UserStore';
 
 export default function RegisterScreen() {
 
+  const userAuthDispatch = useContext(UserDispatchContext);
   const db = useSQLiteContext();
 
   const [name, setName] = useState('');
@@ -17,7 +20,7 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
-  const [errors = { name }, setErrors] = useState({});
+  const [errors, setErrors] = useState({});
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -28,28 +31,61 @@ export default function RegisterScreen() {
     // const user = { name, email, password, logado: true };
     try {
 
+      const apiKey = env.API_KEY;
+      const apiUrl = env.API_URL;
 
+      const response = await fetch(`${apiUrl}/v1/accounts:signUp?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name,
+          email: email,
+          password: password,
+          returnSecureToken: true
+        })
+      });
+      const { status, statusText } = response;
+      if (status == 200) {
+        const body = await response.json();
+        userAuthDispatch({
+          type: UserActionType.LOGAR,
+          user: {
+            id: body.localId,
+            email: email,
+            password: password,
+            token: body.idToken
+          }
+        })
+        router.push('/home');
+
+      } else {
+        console.error(response)
+        Alert.alert('Não foi possível registrar o usuário');
+      }
+
+      /*
       await db.runAsync(`INSERT INTO ${TB_USERS_NAME} (name, 
-                                                email, 
-                                                password, 
-                                                logado, 
-                                                created_at, 
-                                                updated_at)
-                                        VALUES (?, ?, ?, ?, ?, ?)`, name, email, password, 1, Date(), Date())
-
+      email, 
+      password, 
+      logado, 
+      created_at, 
+      updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)`, name, email, password, 1, Date(), Date())
+      
       // const storedUsers = JSON.parse(await AsyncStorage.getItem('users')) || [];
       // storedUsers.push(user);
       // await AsyncStorage.setItem('users', JSON.stringify(storedUsers));
       console.log('Usuário salvo com sucesso no AsyncStorage');
-      router.push('/home');
+      */
     } catch (error) {
-      console.error('Erro ao salvar o usuário:', error);
+      console.error(error)
+      Alert.alert('Não foi possível registrar o usuário');
     }
   };
 
 
   const validateFields = () => {
-    const newErrors = { name, email, password, confirmPassword };
+    const newErrors = {};
 
     if (!name.trim()) newErrors.name = 'Nome é obrigatório';
     if (!validateEmail(email)) newErrors.email = 'Email inválido';

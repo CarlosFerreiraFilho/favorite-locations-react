@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
+import React, { useContext, useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import styles from '../../../../components/styles/homeStyle';
 import { router } from 'expo-router';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -8,17 +8,40 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { CURRENT_USER, TB_LOCATIONS_NAME } from '@/Database/AppDatabase';
 import LocationBodyModel from '@/models/Locations/LocationBodyModel';
+import { UserContext } from '@/store/UserStore';
+import env from '@/constants/env';
 
 export default function HomeScreen() {
-
+    const userAuth = useContext(UserContext);
     const db = useSQLiteContext();
     const [locations, setLocations] = useState([]);
+    const [isLoading, setLoading] = useState(false);
+    const [message, setMessage] = useState<string | null>(null);
 
     const getLocations = async () => {
-
-        const locationsData = await db.getAllAsync(`SELECT * FROM ${TB_LOCATIONS_NAME} WHERE user_id = ?`, CURRENT_USER.user_id);
+        setLoading(true)
+        // const locationsData = await db.getAllAsync(`SELECT * FROM ${TB_LOCATIONS_NAME} WHERE user_id = ?`, userAuth?.id ?? 0);
         // const locationsData = await AsyncStorage.getItem('locations');
-        return locationsData;
+
+        try {
+            const response = await fetch(`${env.DB_URL}/locations.json`);
+            const locationsObj = await response.json();
+            const locationsArr: Array<LocationBodyModel> = Object.values(locationsObj)
+            const locationsIdArr: Array<string> = Object.keys(locationsObj)
+            const locationsData = locationsArr.map((location_, index) => {
+                return {
+                    ...location_,
+                    id: locationsIdArr[index]
+                }
+            })
+            console.log(locationsData)
+            setMessage(null)
+            return locationsData;
+        } catch (error) {
+            setMessage(error.message)
+        } finally {
+            setLoading(false)
+        }
     };
 
     useFocusEffect(
@@ -45,6 +68,27 @@ export default function HomeScreen() {
 
     const handleDeleteLocation = async (id) => {
 
+        setLoading(true)
+        try {
+
+            fetch(`${env.DB_URL}/locations/${id}.json`, {
+                method: "DELETE",
+                headers: { 'Content-Type': 'application/json' }
+            })
+            Alert.alert('Sucesso', 'Localização removida com sucesso!');
+
+            setMessage(null)
+
+        } catch (error) {
+            Alert.alert('Erro', 'Não foi possível remover localização!');
+            setMessage(error.message)
+        } finally {
+            const savedLocations = await getLocations();
+            setLocations(savedLocations);
+            setLoading(false)
+        }
+
+        /*
         try {
             await db.runAsync(`delete from ${TB_LOCATIONS_NAME} where id = ?`, id)
 
@@ -63,6 +107,7 @@ export default function HomeScreen() {
         // await AsyncStorage.setItem('locations', JSON.stringify(updatedLocations));
 
         // Alert.alert('Sucesso', 'Localização removida com sucesso!');
+        */
     };
 
     const renderLocationItem = ({ item }) => {
@@ -98,6 +143,9 @@ export default function HomeScreen() {
 
     return (
         <View style={styles.container}>
+            {isLoading && <ActivityIndicator size="large" color="#00d6c5" />}
+            {message && <Text>{message}</Text>}
+
             <FlatList
                 data={locations}
                 renderItem={renderLocationItem}

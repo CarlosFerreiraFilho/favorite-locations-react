@@ -6,21 +6,26 @@ import { useRouter } from 'expo-router';
 import { ColorsConstants } from '@/styles/Global.style';
 import { useSQLiteContext } from 'expo-sqlite';
 import UserBodyModel from '@/models/Users/UserBodyModel';
-import { SELECT_USER_LOGGED, TB_USERS_NAME } from '@/Database/AppDatabase';
+import { TB_USERS_NAME } from '@/Database/AppDatabase';
+import { useContext } from 'react';
+import { UserActionType, UserContext, UserDispatchContext } from '@/store/UserStore';
 
 export default function Layout() {
+    const userAuth = useContext(UserContext);
+    const userAuthDispatch = useContext(UserDispatchContext);
     const router = useRouter();
     const db = useSQLiteContext();
+
+    console.log(userAuth)
 
     const handleLogout = async () => {
         try {
 
-            const loggedInUser = await db.getFirstAsync<UserBodyModel>(SELECT_USER_LOGGED);
+            await db.runAsync(`UPDATE ${TB_USERS_NAME} SET logado = 0, updated_at = ? where id = ?`, Date(), userAuth?.id ?? 0);
 
-            if (loggedInUser) {
-                await db.runAsync(`UPDATE ${TB_USERS_NAME} SET logado = 0, updated_at = ? where id = ?`, Date(), loggedInUser.id);
-            }
-
+            userAuthDispatch({
+                type: UserActionType.DESLOGAR
+            })
             // await AsyncStorage.removeItem('user');
 
             // const users = JSON.parse(await AsyncStorage.getItem('users')) || [];
