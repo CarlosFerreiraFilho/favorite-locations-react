@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { Text } from 'react-native-paper';
 import styles from '../../../components/styles/locationStyle';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -70,17 +71,35 @@ export default function LocationScreen() {
 
   const saveLocations = async () => {
     const userUid = userAuth?.id
+    const apiGqlUrl = env.API_GQL_URL
     try {
 
       if (locationId && locationId !== "undefined") {
 
-        fetch(`${env.DB_URL}/locations/${locationId}.json`, {
+        await fetch(apiGqlUrl, {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: `mutation ($location: updateLocationInput) {
+                      updateLocation(location: $location) {
+                        id, name, latitude, longitude, markerColor, user_uid, updated_at
+                      }
+                    }`,
+            variables: {
+              location: {
+                name, latitude, longitude, markerColor, userUid, updated_at: Date()
+              }
+            }
+          })
+        })
+
+        /* fetch(`${env.DB_URL}/locations/${locationId}.json`, {
           method: "PUT",
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name, latitude, longitude, markerColor, userUid, updated_at: Date()
           })
-        })
+        }) */
 
 
         /*
@@ -93,14 +112,31 @@ export default function LocationScreen() {
       */
       } else {
 
+        await fetch(apiGqlUrl, {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: `mutation ($newLocation: addLocationInput) {
+                      addLocation(newLocation: $newLocation) {
+                        id, name, latitude, longitude, markerColor, user_uid, created_at, updated_at
+                      }
+                    }`,
+            variables: {
+              newLocation: {
+                name, latitude, longitude, markerColor, userUid, updated_at: Date()
+              }
+            }
+          })
+        })
 
-        fetch(`${env.DB_URL}/locations.json`, {
+
+        /* fetch(`${env.DB_URL}/locations.json`, {
           method: "POST",
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name, latitude, longitude, markerColor, userUid, created_at: Date(), updated_at: null
           })
-        })
+        }) */
 
         /*await db.runAsync(`INSERT INTO ${TB_LOCATIONS_NAME} (name,
                                       latitude,
@@ -115,7 +151,7 @@ export default function LocationScreen() {
       // console.log("locations:" + locations)
       // await AsyncStorage.setItem('locations', JSON.stringify(locations));
     } catch (error) {
-      console.error('Erro ao salvar localizações no AsyncStorage:', error);
+      console.error('Erro ao salvar localizaçãow:', error);
     }
   };
 

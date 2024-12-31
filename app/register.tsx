@@ -1,5 +1,6 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { Text } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../components/styles/registerStyle';
 import { router } from 'expo-router';

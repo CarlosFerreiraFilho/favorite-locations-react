@@ -1,5 +1,6 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { Text, List } from 'react-native-paper';
 import styles from '../../../../components/styles/homeStyle';
 import { router } from 'expo-router';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -24,7 +25,34 @@ export default function HomeScreen() {
         // const locationsData = await AsyncStorage.getItem('locations');
 
         try {
-            const response = await fetch(`${env.DB_URL}/locations.json`);
+            // const apiUrl = env.DB_URL;
+            // const response = await fetch(`${apiUrl}/locations.json`);
+
+            const apiGqlUrl = env.API_GQL_URL;
+
+            console.log(apiGqlUrl)
+            const response = await fetch(apiGqlUrl, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: `query {
+                                locations(user_uid: "T4tvUaJ8RFeqSdmfYOKSNW8lgzE2") {
+                                    id
+                                    name
+                                    latitude
+                                    longitude
+                                    markerColor
+                                    user_uid
+                                    created_at
+                                    updated_at
+                                }
+                            }`
+                })
+            })
+
+
             const locationsObj = await response.json();
             const locationsArr: Array<LocationBodyModel> = Object.values(locationsObj)
             const locationsIdArr: Array<string> = Object.keys(locationsObj)
@@ -38,6 +66,7 @@ export default function HomeScreen() {
             setMessage(null)
             return locationsData;
         } catch (error) {
+            console.log(error)
             setMessage(error.message)
         } finally {
             setLoading(false)
@@ -91,21 +120,21 @@ export default function HomeScreen() {
         /*
         try {
             await db.runAsync(`delete from ${TB_LOCATIONS_NAME} where id = ?`, id)
-
+    
             const savedLocations = await getLocations();
             setLocations(savedLocations);
             Alert.alert('Sucesso', 'Localização removida com sucesso!');
         } catch (error) {
-
+    
             console.error('Não foi possível remover localização! ', error)
             Alert.alert('Erro', 'Não foi possível remover localização!');
         }
-
+    
         // const updatedLocations = locations.filter(location => location.id !== id);
         // setLocations(updatedLocations);
-
+    
         // await AsyncStorage.setItem('locations', JSON.stringify(updatedLocations));
-
+    
         // Alert.alert('Sucesso', 'Localização removida com sucesso!');
         */
     };
@@ -124,19 +153,28 @@ export default function HomeScreen() {
                         style={styles.markerIcon}
                     />
                 </View>
+                <List.Item
+                    title={item.name}
+                    description={`Lat: ${item.latitude} Long: ${item.longitude}  `}
+                    right={_ => (<TouchableOpacity
+                        style={styles.removeButton}
+                        onPress={() => handleDeleteLocation(item.id)}
+                    >
+                        <Icon name="trash-o" size={25} color="#fff" />
+                    </TouchableOpacity>)} />
 
-                <View style={styles.infoContainer}>
+                {/* <View style={styles.infoContainer}>
                     <Text style={styles.locationName}>{item.name}</Text>
                     <Text style={styles.locationInfo}>Latitude: {item.latitude}</Text>
                     <Text style={styles.locationInfo}>Longitude: {item.longitude}</Text>
-                </View>
+                </View> */}
 
-                <TouchableOpacity
+                {/* <TouchableOpacity
                     style={styles.removeButton}
                     onPress={() => handleDeleteLocation(item.id)}
                 >
                     <Icon name="trash-o" size={25} color="#fff" />
-                </TouchableOpacity>
+                </TouchableOpacity> */}
             </TouchableOpacity>
         );
     };

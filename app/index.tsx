@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { Text } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import styles from '../components/styles/loginStyle';
@@ -28,8 +29,6 @@ export default function LoginScreen() {
     const checkUserLoggedIn = async () => {
       setLoading(true);
       try {
-
-        console.log(userAuth)
 
         const loggedInUser = await db.getFirstAsync<UserBodyModel>(SELECT_USER_LOGGED);
 
@@ -164,6 +163,7 @@ export default function LoginScreen() {
       <Text style={styles.subtitle}>Faça login para continuar</Text>
 
       <TextInput
+        testID='login-input-usermail'
         style={styles.input}
         placeholder="Email"
         placeholderTextColor="#a9a9a9"
